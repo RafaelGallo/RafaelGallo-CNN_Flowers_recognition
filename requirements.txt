@@ -2,4 +2,4 @@ streamlit
 tensorflow>=2.10
 pillow
 numpy
-requests
+huggingface_hub
