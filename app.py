@@ -2,47 +2,51 @@
 
 import streamlit as st
 import os
-import requests
+from huggingface_hub import hf_hub_download
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from PIL import Image
 import numpy as np
 
-# URL pública direta do seu modelo .h5 no Hugging Face
-MODEL_URL  = "https://huggingface.co/Gallorafael2222/Cnn/resolve/main/flower_classifier.h5"
-MODEL_DIR  = "model"
-MODEL_PATH = os.path.join(MODEL_DIR, "flower_classifier.h5")
+# Identificação do seu repositório e arquivo no HF Hub
+HF_REPO_ID  = "Gallorafael2222/Cnn"
+HF_FILENAME = "flower_classifier.h5"
+MODEL_DIR   = "model"
+MODEL_PATH  = os.path.join(MODEL_DIR, HF_FILENAME)
 
 @st.cache_resource
 def load_flower_model():
-    # Se não existir localmente, baixa por HTTP
+    # Se não existir localmente, baixa com huggingface_hub
     if not os.path.exists(MODEL_PATH):
         os.makedirs(MODEL_DIR, exist_ok=True)
-        resp = requests.get(MODEL_URL, stream=True)
-        resp.raise_for_status()
-        with open(MODEL_PATH, "wb") as f:
-            for chunk in resp.iter_content(1024 * 1024):
-                f.write(chunk)
+        local_fp = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename=HF_FILENAME,
+            cache_dir=MODEL_DIR,
+            library_name="streamlit_app"
+        )
+        # O hf_hub_download já salva no cache_dir, então só garantimos o nome
+        if local_fp != MODEL_PATH:
+            os.replace(local_fp, MODEL_PATH)
     return load_model(MODEL_PATH)
 
-# Carrega o modelo (e faz download na primeira vez)
+# Carrega o modelo (download na primeira execução)
 model = load_flower_model()
 
-# Título da app
+# Título
 st.title("🌸 Classificador de Flores")
 
-# Exibe qual input_shape o modelo espera
-st.write("⚙️ O modelo espera input com shape:", model.input_shape)
+# Exibe o input_shape esperado
+st.write("⚙️ Modelo espera input com shape:", model.input_shape)
 
-# Upload de imagem pelo usuário
-uploaded_file = st.file_uploader("Envie uma foto de flor", type=["jpg", "jpeg", "png"])
+# Upload da imagem
+uploaded_file = st.file_uploader("Envie uma foto de flor", type=["jpg","jpeg","png"])
 if uploaded_file:
-    # Abre e exibe a imagem
     img = Image.open(uploaded_file).convert("RGB")
     st.image(img, use_column_width=True)
 
     # Preprocessamento dinâmico
-    _, h, w, c = model.input_shape  # batch, height, width, channels
+    _, h, w, c = model.input_shape
     img = img.resize((w, h))
     if c == 1:
         img = img.convert("L")  # grayscale
@@ -56,6 +60,5 @@ if uploaded_file:
     idx = np.argmax(preds)
     conf = preds[idx] * 100
 
-    # Resultado na tela
     st.write(f"**Resultado:** {labels[idx]}")
     st.write(f"**Confiança:** {conf:.2f}%")
