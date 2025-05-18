@@ -29,7 +29,7 @@ def load_flower_model():
 model = load_flower_model()
 
 # Título
-st.title("🌸 Classificador de Flores")
+st.title("🌸 Deploy Rede Neural Convolucional - Classificador de Flores")
 
 # Exibe o input_shape esperado
 st.write("⚙️ Modelo espera input com shape:", model.input_shape)
