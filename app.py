@@ -11,6 +11,10 @@ import numpy as np
 HF_REPO_ID  = "Gallorafael2222/Cnn"
 HF_FILENAME = "flower_classifier.h5"
 
+# Liste aqui as classes na mesma ordem em que seu modelo as produz.
+# Exemplo para o Flowers recognition dataset (5 classes):
+CLASS_LABELS = ["daisy", "dandelion", "rose", "sunflower", "tulip"]
+
 @st.cache_resource
 def load_flower_model():
     # Baixa (ou pega do cache) e retorna o caminho do arquivo .h5
@@ -19,38 +23,41 @@ def load_flower_model():
         filename=HF_FILENAME,
         library_name="streamlit_app"
     )
-    # Carrega e retorna o modelo
     return load_model(model_fp)
 
 # Carrega o modelo (download/cache na primeira execução)
 model = load_flower_model()
 
-# Título da aplicação
+# Título
 st.title("🌸 Classificador de Flores")
 
-# Mostra qual input_shape o modelo espera
+# Exibe o input_shape esperado
 st.write("⚙️ Modelo espera input com shape:", model.input_shape)
 
 # Upload de imagem
 uploaded_file = st.file_uploader("Envie uma foto de flor", type=["jpg", "jpeg", "png"])
 if uploaded_file:
+    # Abre e exibe a imagem
     img = Image.open(uploaded_file).convert("RGB")
-    st.image(img, use_column_width=True)
+    st.image(img, use_container_width=True)
 
     # Preprocessamento dinâmico
     _, h, w, c = model.input_shape
     img = img.resize((w, h))
     if c == 1:
-        img = img.convert("L")  # grayscale somente se necessário
+        img = img.convert("L")
 
     x = image.img_to_array(img) / 255.0
     x = np.expand_dims(x, axis=0)
 
     # Predição
-    preds = model.predict(x)[0]
-    labels = ["Não é flor", "É flor"]
+    preds = model.predict(x)[0]  # vetor de probas tamanho = nº de classes
     idx = np.argmax(preds)
     conf = preds[idx] * 100
 
-    st.write(f"**Resultado:** {labels[idx]}")
-    st.write(f"**Confiança:** {conf:.2f}%")
+    # Garante que a lista de labels bate com o tamanho de saída
+    if len(CLASS_LABELS) != len(preds):
+        st.error(f"Erro: modelo retornou {len(preds)} classes, mas você forneceu {len(CLASS_LABELS)} rótulos.")
+    else:
+        st.write(f"**Resultado:** {CLASS_LABELS[idx].capitalize()}")
+        st.write(f"**Confiança:** {conf:.2f}%")
